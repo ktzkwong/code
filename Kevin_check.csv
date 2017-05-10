@@ -1,30 +1,30 @@
-,Record_ID
-1,LF10606GH
-2,LF10607GH
-3,LF10609GH
-4,LF10610GH
-5,LF1663EG
-6,LF2038KE
-7,LF2880YT
-8,LF4533BR
-9,LF4580DO
-14,LF4803TT
-15,LF5158IN
-16,LF5274IN
-17,LF5289IN
-18,LF5304IN
-19,LF5319IN
-20,LF5334IN
-21,LF5349IN
-22,LF5364IN
-23,LF5414ID
-24,LF5787ID
-25,LF5801ID
-26,LF6072LK
-27,LF6073LK
-28,LF7118PF
-29,LF7776KR
-30,LF7791KR
-31,LF7792KR
-32,LF7793KR
-33,LF8106WF
+Record_ID,Reason,Reviewed paper,Fix?,Fix detail,Drop Phase
+LF10606GH,"Same study sample as Record_ID LF10605GH, just different diagnostics; data is now collapsed into LF10605GH",1,,,Crosswalk reviews
+LF10607GH,"Same study sample as Record_ID LF10605GH, just different diagnostics; data is now collapsed into LF10605GH",1,,,Crosswalk reviews
+LF10609GH,"Same study sample as Record_ID LF10608GH, just different diagnostics; data is now collapsed into LF10605GH",1,,,Crosswalk reviews
+LF10610GH,"Same study sample as Record_ID LF10608GH, just different diagnostics; data is now collapsed into LF10605GH",1,,,Crosswalk reviews
+LF1663EG,Start_year == 1980,,1,include Start_year >= 1980,
+LF2038KE,"dropped because data is an (incorrect) duplicate of LF2148KE (used same prevalence and population size, not sample size, to backcalculate cases)",1,,,verify_duplicates
+LF2880YT,Start_year == 1980,,1,include Start_year >= 1980,
+LF4533BR,Start_year == 1980,,1,include Start_year >= 1980,
+LF4580DO,Start_year == 1980,,1,include Start_year >= 1980,
+LF4803TT,Start_year == 1980,,1,include Start_year >= 1980,
+LF5158IN,2 rows dropped; 1 row's data is already logged from an earlier source (same author). Other row is based off of a weird sample of pre-MDA amicrofilaraemic asymptomatic and pre-MDA microfilaraemic asymptomatic individuals (dropped due to irrepresentativeness),1,,,Crosswalk reviews
+LF5274IN,"Lat, long were missing and the data could not be geolocated based on source and online resources",1,,,verify_polygons
+LF5289IN,"Lat, long were missing and the data could not be geolocated based on source and online resources",1,,,verify_polygons
+LF5304IN,"Lat, long were missing and the data could not be geolocated based on source and online resources",1,,,verify_polygons
+LF5319IN,"Lat, long were missing and the data could not be geolocated based on source and online resources",1,,,verify_polygons
+LF5334IN,"Lat, long were missing and the data could not be geolocated based on source and online resources",1,,,verify_polygons
+LF5349IN,"Lat, long were missing and the data could not be geolocated based on source and online resources",1,,,verify_polygons
+LF5364IN,"Lat, long were missing and the data could not be geolocated based on source and online resources",1,,,verify_polygons
+LF5414ID,Start_year == 1980,,1,include Start_year >= 1980,
+LF5787ID,Start_year == 1980,,1,include Start_year >= 1980,
+LF5801ID,Start_year == 1980,,1,include Start_year >= 1980,
+LF6072LK,Coordinates are not in study area; cannot geolocate based on info in paper,1,,,verify_duplicates
+LF6073LK,Coordinates are not in study area; cannot geolocate based on info in paper,1,,,verify_duplicates
+LF7118PF,Start_year == 1980,,1,include Start_year >= 1980,
+LF7776KR,Start_year == 1980,,1,include Start_year >= 1980,
+LF7791KR,Start_year == 1980,,1,include Start_year >= 1980,
+LF7792KR,Start_year == 1980,,1,include Start_year >= 1980,
+LF7793KR,Start_year == 1980,,1,include Start_year >= 1980,
+LF8106WF,Start_year == 1980,,1,include Start_year >= 1980,

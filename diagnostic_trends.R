@@ -9,7 +9,7 @@
 rm(list=ls())
 dev.off()
 
-pacman::p_load(data.table, ggplot2, magrittr, reshape2, stringi, dplyr)
+pacman::p_load(data.table, ggplot2, magrittr, reshape2, stringi, dplyr, ggrepel)
 
 workdir <- "H:/code/"
 setwd(workdir)
@@ -50,23 +50,23 @@ names_diff <- function(dt_new, dt_ref){
 gahi[, source := "GAHI"]
 
 # diagnostics
-dx_names <- c("Blood_smear", "ICT", "Others", "Hydrocele", "Lymphedema", "Any_clinic", "Filtration")
+dx_names <- unlist(strsplit(paste(gahi$diagnostics %>% unique, collapse = " "), split = " "))
+dx_names <- dx_names[!(dx_names %in% "+")] %>% unique
 
 for (name in dx_names){
   gahi[grep(name, gahi$diagnostics), c(name) := list(1)]
   gahi[!(grep(name, gahi$diagnostics)), c(name) := list(0)]
 }
 
-# age distribution
-gahi[Age_start > 18 & Age_end > 18, age_group := "Adults"]
-gahi[Age_start <= 18 & Age_end <= 18 & Age_start != 0 & Age_end != 0, age_group := "Children"]
-gahi[Age_start <= 18 & Age_end > 18, age_group := "Adults & Children"]
-gahi[Age_start == 0 & Age_end == 0, age_group := "Unknown"]
-
 # mda
 gahi[N_rounds == 0, c("mda", "mda_name") := list(0, "pre-MDA")]
 gahi[N_rounds > 0, c("mda", "mda_name") := list(1, "post-MDA")]
 
+#get GAHI loc file
+gahi_loc_dict <- fread("GAHI_location_dictionary.csv")
+gahi_loc_dict <- gahi_loc_dict[,.(location_name, super_region_id, super_region_name, region_id, region_name, developed)]
+gahi <- merge(gahi, gahi_loc_dict, by.x = "ADM0", by.y = "location_name")
+setnames(gahi, "ADM0", "location_name")
 ### Lit Extraction processing ################################################################
 
 # remove 2 rows missing file_path and citation; will probably be fixed by Chelsey. Check!!!
@@ -135,8 +135,8 @@ for (spec in unique(multi_subset$specificity)) {
   extract_list[[i]][location_id == 4870, location_id := 43937] #Tamil Nadu (total) location_id not in get_location, switch to Tamil Nadu_rural
   extract_list[[i]] <- merge(extract_list[[i]], loc_short, by = "location_id", all.x = T)
   
-  extract_list[[i]][(cv_MDAbase == 1 | cv_MDAbase == "") & cv_MDAend == "" & cv_MDAschool == "", mda := 0]
-  extract_list[[i]][is.na(mda) == T, mda := 1]
+  extract_list[[i]][is.na(cv_MDAend) == T & is.na(cv_MDAschool) ==T, c("mda", "mda_name") := list(0, "pre-MDA")]
+  extract_list[[i]][is.na(mda) == T, c("mda", "mda_name") := list(1, "post-MDA")]
   
   i <- i + 1
 }
@@ -168,11 +168,51 @@ for (i in unique(final_extract$group)){
 
 final_extract <- final_extract[!(pop_id %in% exclude)]
 
+setnames(final_extract, grep("mean", names(final_extract), value = T), gsub(".*_", "prev_", grep("mean", names(final_extract), value = T)))
+setnames(final_extract, grep("cases", names(final_extract), value = T), gsub(".*_", "np_", grep("cases", names(final_extract), value = T)))
+setnames(final_extract, grep("sample_size", names(final_extract), value = T), gsub(".*_", "pop_", grep("sample_size", names(final_extract), value = T)))
+setnames(final_extract, names(final_extract), gsub("ict", "ICT", names(final_extract)))
+setnames(final_extract, names(final_extract), gsub("mf", "Blood_smear", names(final_extract)))
+setnames(final_extract, names(final_extract), gsub("fts", "New_rapid_test", names(final_extract)))
+setnames(final_extract, names(final_extract), gsub("elisa", "ELISA", names(final_extract)))
+setnames(final_extract, names(final_extract), gsub("igg4", "Others", names(final_extract)))
+setnames(final_extract, names(final_extract), gsub("clinical", "Any_clinic", names(final_extract)))
+setnames(final_extract, names(final_extract), gsub("age", "Age", names(final_extract)))
+setnames(final_extract, c("field_citation","file_path", "filtration", "group", "lat", "long", "sex", "year_start", "year_end"),
+                                   c("Library_ID", "Reference", "Filtration", "Record_ID", "Latitude", "Longitude", "Sex", "Year_start", "Year_end"))
+final_extract[, names_diff(final_extract, gahi) := NULL]
+final_extract[, source := "Lit Extraction"]
 
-### GAHI Year Stats ######################################################################
+# get diagnostic columns and count for each row
+dx_names <- c("Blood_smear", "ICT", "Others", "Any_clinic", "ELISA", "New_rapid_test")
 
-age_table <- gahi[,.(age_group, mda_name)] %>% table %>% as.data.table
+for (name in dx_names){
+  dx_cols <- grep(name, names(final_extract), value = T)
+  for (col in dx_cols){
+    final_extract[is.na(final_extract[, get(col)]) == F, c(name) := list(1)]
+  }
+  final_extract[is.na(get(name)) == T, c(name) := list(0)]
+}
 
+gahi[, source := "GAHI"]
+total <- rbind(gahi, final_extract, fill = T)
+
+
+# age distribution
+total[Age_start > 18 & Age_end > 18, age_group := "Adults"]
+total[Age_start <= 18 & Age_end <= 18 & Age_start != 0 & Age_end != 0, age_group := "Children"]
+total[Age_start <= 18 & Age_end > 18, age_group := "Adults & Children"]
+total[Age_start == 0 & Age_end == 0, age_group := "Unknown"]
+
+#regenerate full dx_names
+dx_names <- unlist(strsplit(paste(gahi$diagnostics %>% unique, collapse = " "), split = " "))
+dx_names <- dx_names[!(dx_names %in% "+")] %>% unique
+
+### total Year Stats ######################################################################
+
+age_table <- total[,.(age_group, mda_name)] %>% table %>% as.data.table
+
+levels(total$mda_name) <- c("pre-MDA", "post-MDA")
 age_viz <- ggplot(age_table, aes(x = mda_name, fill = mda_name)) +
   geom_col(aes(y = N)) +
   facet_wrap( ~ age_group) +
@@ -180,6 +220,7 @@ age_viz <- ggplot(age_table, aes(x = mda_name, fill = mda_name)) +
   scale_fill_discrete(name = "MDA", guide = guide_legend(reverse=TRUE)) +
   geom_text(aes(y = N, label= N), vjust= -0.5, size = 3) +
   labs(title = "Age Group Breakdown by MDA", x = "MDA", y = "Count") +
+  scale_x_discrete (limits = c("pre-MDA", "post-MDA")) +
   guides(fill = F)
 
 # sample size groups by year
@@ -190,7 +231,7 @@ year_stats <- data.table(year_range, n_points)
 setnames(year_stats, "year_range", "year")
 
 for (i in year_range){
-  temp <- gahi[Year_start == i,]
+  temp <- total[Year_start == i,]
   year_stats[year == i, n_points := nrow(temp)]
   year_stats[year == i, n_sources_tot := length(unique(temp$Library_ID))]
   year_stats[year == i , n_sources_site := length(unique(temp[is.na(object_ids) == T, Library_ID]))]
@@ -207,7 +248,7 @@ for (i in year_range){
       year_stats[year == i, c(name) := nrow(temp[get(name) == 1,])]
     }
     
-    for (reg in unique(gahi$REGION)){
+    for (reg in unique(total$REGION)){
       year_stats[year == i, c(reg) := nrow(temp[REGION == reg,])]
     }
     
@@ -219,8 +260,11 @@ children <- rep(0, length(dx_names))
 all_ages <- rep(0, length(dx_names))
 n_points <- rep(0, length(dx_names))
 dx_stats <- data.table(dx_names, n_points, adults, children, all_ages)
+
+age_prev_dt <- data.table(pop_id = integer(), diagnostic = character(), prev = double(), age_group = character(), mda_name = character())
+
 for (dx in dx_names){
-  temp <- gahi[get(dx) == 1,]
+  temp <- total[get(dx) == 1,]
   if(nrow(temp) > 0) {
     dx_stats[dx_names == dx, n_points := temp %>% nrow]
     dx_stats[dx_names == dx, only_dx := temp[num_diagnostics == 1,] %>% nrow]
@@ -230,6 +274,60 @@ for (dx in dx_names){
     dx_stats[dx_names == dx, all_ages := temp[age_group == "Adults & Children",] %>% nrow]
     dx_stats[dx_names == dx, pre_mda := temp[mda == 0,] %>% nrow]
     dx_stats[dx_names == dx, post_mda := temp[mda == 1,] %>% nrow]
-    
+    for (i in c(0, 1)){
+      if (i == 0){
+        m <- "pre_mda"
+      } else{ m <- "post_mda"}
+      
+      for (ag in c("Adults", "Children", "Adults & Children", "Unknown")){
+        rows <- temp[mda == i & age_group == ag,] %>% nrow
+        if (rows == 0){
+          dx_stats[dx_names == dx, paste0(m, "_", ag) := 0]
+        } else{
+          dx_stats[dx_names == dx, paste0(m, "_", ag) := rows]
+          
+          names <- c("pop_id", "age_group", paste0("prev_", dx), "mda_name")
+          t <- temp[mda == i & age_group == ag, names, with = F]
+          diagnostic <- rep(dx, times = rows)
+          t <- cbind(t, diagnostic)
+          setnames(t, paste0("prev_", dx), "prev")
+          age_prev_dt <- rbind(age_prev_dt, t, fill = T)
+        }
+      }
+    }
   }
 }
+
+give.n <- function(x){
+  return(c(y = mean(x), label = length(x)))
+}
+
+age_prev_dt$age_group <- factor(age_prev_dt$age_group, c("Children", "Adults & Children", "Adults", "Unknown"))
+age_prev_pre_MDA <- ggplot(age_prev_dt[mda_name == "pre-MDA" & diagnostic %in% c("Blood_smear", "ICT") & prev != 0], aes(y = prev)) +
+  geom_boxplot(aes(x = age_group, color = age_group)) +
+  facet_grid( ~ diagnostic)+
+  theme_minimal() +
+  guides(fill = F) +
+  labs(title = "Pre-MDA Prevalence by Age Group and Diagnostic", x = "Age Group", y = "Prevalence")
+
+dx_cols <- c("dx_names", grep("pre_mda_", names(dx_stats), value = T), grep("post_mda_", names(dx_stats), value = T))
+dx_tb <- dx_stats[, dx_cols, with = F]
+dx_tb <- data.table::melt(dx_tb, id = "dx_names")
+dx_tb[grep("pre_mda", dx_tb$variable), mda_name := "pre_MDA"]
+dx_tb[grep("post_mda", dx_tb$variable), mda_name := "post_MDA"]
+dx_tb[grep("Adults", dx_tb$variable), age_group := "Adults"]
+dx_tb[grep("Children", dx_tb$variable), age_group := "Children"]
+dx_tb[grep("Unknown", dx_tb$variable), age_group := "Unknown"]
+dx_tb[grep("Adults & Children", dx_tb$variable), age_group := "Adults & Children"]
+
+common_dx <- c("Any_clinic", "Blood_smear", "ELISA", "Hydrocele", "ICT", "Lymphedema")
+
+dx_viz <- ggplot(dx_tb[dx_names %in% common_dx,], aes(x = mda_name)) +
+  geom_col(aes(y = value, fill = age_group)) +
+  facet_grid( ~ dx_names) +
+  theme_classic() +
+  labs(title = "Age Group Breakdown by Diagnostic and MDA (GAHI and Lit Extraction)", x = "Age Group", y = "Count") +
+  guides(fill = guide_legend(title="Age Group"))
+
+# KK - should look into why some prev are >1
+# KK - why are there so many 0 ICT prev for pre-MDA? Because not truly pre-MDA?

@@ -28,18 +28,19 @@ if(TRUE){### Fix data quality issues in Rachel's dataset #######################
 
 gahi_raw[Record_ID == "LF2148KE", ADM0_ID := 133]
 gahi_raw <- gahi_raw[!(OBJECTID %in% c(5012, 5022, 5036, 5048, 5052, 5066, 9308, 9309, 9310, 7047, 7046, 5012, 5022, 5036, 5048, 5066,
-                           6154, 6156, 6158, 6160, 6162, 6164, 6166, 9835, 9836, 9111, 9112))]
+                           6154, 6156, 6158, 6160, 6162, 6164, 6166, 9835, 9836, 9111, 9112, 7024, 7025))]
 gahi_raw[Record_ID %in% c("LF10421TZ", "LF10422TZ", "LF10423TZ"), c("Age_start", "Age_end") := list(5, 16)]
 gahi_raw[OBJECTID == 6377, pop := 159]
 gahi_raw[OBJECTID == 9306, Record_ID := paste(Record_ID, "_1")]
 gahi_raw[OBJECTID == 3406, c("pop", "np", "Method_2") := list(770, 127, "ELISA")]
+gahi_raw[OBJECTID == 7171, c("pop", "np") := list(238, 41)]
 gahi_raw[OBJECTID %in% c(15280, 15279), Record_ID := "LF10605GH"]
 gahi_raw[OBJECTID %in% c(15283, 15284), Record_ID := "LF10608GH"]
 gahi_raw[OBJECTID %in% c(15278, 15282), LF_species := "Brugia malayi"]
 gahi_raw[OBJECTID == 9112, Record_ID := "LF7129PF"]
 
 # Q!? - has 0 or super early year_start rows been checked for extraction error? Might be throwing away a lot of data needlessly (3473)
-gahi_raw <- gahi_raw[Year_start > 1980 | Year_start == 0,]
+gahi_raw <- gahi_raw[Year_start >= 1980 | Year_start == 0,]
 
 #fix coordinates
 coords_found <- verify_duplicates[is.na(Latitude) == F, .(Latitude, Longitude, Autonum_ref)]
